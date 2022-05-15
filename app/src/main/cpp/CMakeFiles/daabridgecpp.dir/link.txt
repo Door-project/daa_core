@@ -1,0 +1,1 @@
+/usr/bin/c++ -fPIC -shared -Wl,-soname,libdaabridgecpp.so -o libdaabridgecpp.so CMakeFiles/daabridgecpp.dir/native-lib.cpp.o  -lm -libmtss 

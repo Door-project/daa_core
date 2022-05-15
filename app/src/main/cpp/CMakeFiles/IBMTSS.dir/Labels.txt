@@ -1,0 +1,13 @@
+# Target labels
+ IBMTSS
+# Source files and their labels
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/CMakeFiles/IBMTSS
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/CMakeFiles/IBMTSS.rule
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/CMakeFiles/IBMTSS-complete.rule
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/deps/ibmtss/src/IBMTSS-stamp/IBMTSS-install.rule
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/deps/ibmtss/src/IBMTSS-stamp/IBMTSS-mkdir.rule
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/deps/ibmtss/src/IBMTSS-stamp/IBMTSS-download.rule
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/deps/ibmtss/src/IBMTSS-stamp/IBMTSS-update.rule
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/deps/ibmtss/src/IBMTSS-stamp/IBMTSS-patch.rule
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/deps/ibmtss/src/IBMTSS-stamp/IBMTSS-configure.rule
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/deps/ibmtss/src/IBMTSS-stamp/IBMTSS-build.rule

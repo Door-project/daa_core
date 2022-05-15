@@ -1,0 +1,14 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/native-lib.cpp
+jni.h
+-
+string
+-
+

@@ -1,0 +1,4 @@
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/CMakeFiles/rebuild_cache.dir
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/CMakeFiles/edit_cache.dir
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/CMakeFiles/daabridgecpp.dir
+/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/CMakeFiles/IBMTSS.dir

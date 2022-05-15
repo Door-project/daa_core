@@ -1,0 +1,43 @@
+{
+	"sources" : 
+	[
+		{
+			"file" : "/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/CMakeFiles/IBMTSS"
+		},
+		{
+			"file" : "/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/CMakeFiles/IBMTSS.rule"
+		},
+		{
+			"file" : "/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/CMakeFiles/IBMTSS-complete.rule"
+		},
+		{
+			"file" : "/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/deps/ibmtss/src/IBMTSS-stamp/IBMTSS-install.rule"
+		},
+		{
+			"file" : "/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/deps/ibmtss/src/IBMTSS-stamp/IBMTSS-mkdir.rule"
+		},
+		{
+			"file" : "/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/deps/ibmtss/src/IBMTSS-stamp/IBMTSS-download.rule"
+		},
+		{
+			"file" : "/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/deps/ibmtss/src/IBMTSS-stamp/IBMTSS-update.rule"
+		},
+		{
+			"file" : "/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/deps/ibmtss/src/IBMTSS-stamp/IBMTSS-patch.rule"
+		},
+		{
+			"file" : "/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/deps/ibmtss/src/IBMTSS-stamp/IBMTSS-configure.rule"
+		},
+		{
+			"file" : "/home/benlar/AndroidStudioProjects/DAABridgecpp/app/src/main/cpp/deps/ibmtss/src/IBMTSS-stamp/IBMTSS-build.rule"
+		}
+	],
+	"target" : 
+	{
+		"labels" : 
+		[
+			"IBMTSS"
+		],
+		"name" : "IBMTSS"
+	}
+}
