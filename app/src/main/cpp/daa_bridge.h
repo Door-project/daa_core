@@ -1,15 +1,25 @@
 //
 // Created by benlar on 1/4/22.
 //
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #include <stddef.h>
 #include "ibmtss/TPM_Types.h"
 #ifndef DAA_BRIDGE_V2_DAA_BRIDGE_H
 #define DAA_BRIDGE_V2_DAA_BRIDGE_H
-
 #include "defines.h"
-void onCreateAttestationKeyCommand(TPM2B_PUBLIC* issuer_pub, uint8_t* signedNonce, int nonceLen);
-void onIssuerChallenge(CHALLENGE_CREDENTIAL challenge, AUTHORIZATION genereal_auth, AUTHORIZATION commit_auth, TPML_PCR_SELECTION pcr);
+TPMT_PUBLIC onCreateAttestationKeyCommand(TPM2B_PUBLIC* issuer_pub, uint8_t* signedNonce, int nonceLen);
+CHALLENGE_RESPONSE onIssuerChallenge(CHALLENGE_CREDENTIAL challenge, AUTHORIZATION signAuth, AUTHORIZATION commit_auth, TPML_PCR_SELECTION pcr);
 void requestNonce(TPM2B_NONCE* nonceOut);
+void writeWalletKey(uint8_t* key, int keyLen);
+void writeIssuerKey(uint8_t *key, int keyLen);
+void writeIssuerPrivKey(uint8_t *key, int keyLen);
+void writeWalletPrivKey(uint8_t *key, int keyLen);
+void onIssuerFCRE(FULL_CREDENTIAL fcre);
+
+
 DAA_SIGNATURE execute_daa_sign(uint8_t* msg, size_t msgLen, uint8_t* signed_nonce, size_t signed_nonce_len);
 TPM2B_PUBLIC setup();
 #endif //DAA_BRIDGE_V2_DAA_BRIDGE_H
@@ -45,3 +55,7 @@ PSEUDONYM createPseudonym(uint8_t properties);
 
 // Sign data: Will probably create a structure for this, but this should work as a start.
 void daaSign(uint8_t* data, size_t dataLen, PSEUDONYM* pseudonym, uint8_t* bufferOut, size_t* sizeOut);
+void writeWalletKey(uint8_t *key, int keyLen);
+#ifdef __cplusplus
+}
+#endif

@@ -12,6 +12,12 @@
 #include "openssl/rsa.h"
 #include "issPk.h"
 #include "BN_Crypto.h"
+#include <android/log.h>
+#define  LOG_TAG    "DAA-BRIDGE"
+
+#define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
 
 ECC_POINT daa_stored;
 uint8_t ek_stored[1024];
@@ -49,20 +55,20 @@ uint8_t encryptAES(DAA_CONTEXT *daaContext, uint8_t *data, int dataLen, uint8_t 
     int num = 0;
 
     if (1 != EVP_EncryptInit_ex(ctx, EVP_get_cipherbyname(cipoher), NULL, key, iv)) {
-        printf("[-] Error in Init Ecnryption in openSSL\n");
+        LOGD("[-] Error in Init Ecnryption in openSSL\n");
         EVP_CIPHER_CTX_free(ctx);
         return EXIT_FAILURE;
     }
 
     if (1 != EVP_EncryptUpdate(ctx, &tempBuffer[0], &num, &data[0], dataLen)) {
-        printf("[-] Error in EncryptUpdate in openSSL\n");
+        LOGD("[-] Error in EncryptUpdate in openSSL\n");
         EVP_CIPHER_CTX_free(ctx);
         return EXIT_FAILURE;
     }
     int ciphertext_len = num;
 
     if (1 != EVP_EncryptFinal_ex(ctx, &tempBuffer[num], &num)) {
-        printf("[-] Error in EncryptFinal in openSSL\n");
+        LOGD("[-] Error in EncryptFinal in openSSL\n");
         EVP_CIPHER_CTX_free(ctx);
         return EXIT_FAILURE;
     }
@@ -191,7 +197,7 @@ RSAEncrypt(uint8_t *label, int labelSize, uint8_t *in, int inSize, uint8_t *mod,
     if (rsa_key != NULL) {
         RSA_set0_key(rsa_key, modBN, expBN, NULL);
     } else {
-        printf("[-] Noble able to set RSA key\n");
+        LOGD("[-] Noble able to set RSA key\n");
         BN_free(modBN);
         BN_free(expBN);
         RSA_free(rsa_key);
@@ -208,7 +214,7 @@ RSAEncrypt(uint8_t *label, int labelSize, uint8_t *in, int inSize, uint8_t *mod,
     // Manually do the padding to select the hash functions, SHA256 is used for both OAEP and MGF1 //Chris Newton
     if (RSA_padding_add_PKCS1_OAEP_mgf1(padded, outlen, in, inSize, label, labelSize, EVP_sha256(),
                                         EVP_sha256()) <= 0) {
-        printf("[-] Padding failed\n ");
+        LOGD("[-] Padding failed\n ");
         BN_free(modBN);
         BN_free(expBN);
         RSA_free(rsa_key);
@@ -220,7 +226,7 @@ RSAEncrypt(uint8_t *label, int labelSize, uint8_t *in, int inSize, uint8_t *mod,
     // Now encrypt
     size_t ct_size = RSA_public_encrypt(outlen, padded, outBufferc, rsa_key, RSA_NO_PADDING);
     if (ct_size != outlen) {
-        printf("[-] Error in encryption, key length (%zu) vs cipher text (%d)? \n", ct_size, outlen);
+        LOGD("[-] Error in encryption, key length (%zu) vs cipher text (%d)? \n", ct_size, outlen);
         BN_free(modBN);
         BN_free(expBN);
         RSA_free(rsa_key);
@@ -268,12 +274,6 @@ CHALLENGE_CREDENTIAL make_credential_data(DAA_CONTEXT *daa_ctx) {
     // Then our seed, again with test parameters possible
     RAND_bytes(seed, daa_ctx->halg_size);
 
-    printf("Seed used: ");
-
-    for(int i = 0; i < SHA256_DIGEST_LENGTH; i++){
-        printf("%02x ", seed[i]);
-    }
-    printf("\n");
     // Then we begin to create our secret. Our exponent is a standard 3.
     uint8_t exponent[3] = {0x01, 0x00, 0x01};
 
@@ -284,7 +284,7 @@ CHALLENGE_CREDENTIAL make_credential_data(DAA_CONTEXT *daa_ctx) {
 
     // Check for errors
     if (rc == EXIT_FAILURE) {
-        printf("[-] Unable to encrypt secret\n");
+        LOGD("[-] Unable to encrypt secret\n");
         exit(-1);
     }
 
@@ -468,12 +468,13 @@ int issuer_verify_signature(DAA_CONTEXT *daaContext, DAA_SIGNATURE *sig, int new
     uint8_t v_prime_buff[daaContext->ecc_point_len];
     BN_bn2bin(v_prime, v_prime_buff);
 
+
     if (memcmp(sig->V, v_prime_buff, 32) == 0) {
 #ifdef VERBOSE
-        printf("[+] DAA Signature verified by Issuer\n");
+        LOGD("[+] DAA Signature verified by Issuer\n");
 #endif
     } else {
-        printf("[-] DAA Signature failed to verify by Issuer\n");
+        LOGD("[-] DAA Signature failed to verify by Issuer\n");
         BN_free(bn_V); // @5
         BN_free(v_prime); // @7
         EC_POINT_free(w_P1); // @3
@@ -512,7 +513,7 @@ void make_daa_credential(DAA_CONTEXT *daaCtx, ECC_POINT *daaKeyIn, uint8_t *cred
 
 
 #ifdef VERBOSE
-    printf("[*] Issuer building DAA Credential\n");
+    LOGD("[*] Issuer building DAA Credential\n");
 #endif
     // We prepare random bytes.
     uint8_t r[daaKeyIn->coord_len];
@@ -556,41 +557,41 @@ void make_daa_credential(DAA_CONTEXT *daaCtx, ECC_POINT *daaKeyIn, uint8_t *cred
     // Now we can generate our points //TODO: Cleanup and put in header
     ctx = BN_CTX_new();
     if (1 != EC_POINT_mul(ecgrp, pt_a, r_bn, NULL, NULL, ctx)) {
-        printf("EC multiplication failed: [r]P_1");
+        LOGD("EC multiplication failed: [r]P_1");
     }
     // B=[y]A
     BN_CTX_free(ctx); // TODO: Seriously necessary?
     ctx = BN_CTX_new();
 
     if (1 != EC_POINT_mul(ecgrp, pt_b, NULL, pt_a, sk_y_bn, ctx)) {
-        printf("EC multiplication failed: [y]A");
+        LOGD("EC multiplication failed: [y]A");
     }
 
     BN_CTX_free(ctx); // TODO: Seriously necessary?
     ctx = BN_CTX_new();
     if (1 != BN_mod_mul(ry_bn, r_bn, sk_y_bn, order_bn, ctx)) {
-        printf("Modular multiplication failed ry");
+        LOGD("Modular multiplication failed ry");
     }
     // D=[ry]Q_s
 
     BN_CTX_free(ctx); // TODO: Seriously necessary?
     ctx = BN_CTX_new();
     if (1 != EC_POINT_mul(ecgrp, pt_d, NULL, pt_qs, ry_bn, ctx)) {
-        printf("EC multiplication failed: [ry]Q_s");
+        LOGD("EC multiplication failed: [ry]Q_s");
     }
     // tmp=A+D
 
     BN_CTX_free(ctx); // TODO: Seriously necessary?
     ctx = BN_CTX_new();
     if (1 != EC_POINT_add(ecgrp, pt_tmp, pt_a, pt_d, ctx)) {
-        printf("ec_point_add failed A+D");
+        LOGD("ec_point_add failed A+D");
     }
     // C=[x]tmp
 
     BN_CTX_free(ctx); // TODO: Seriously necessary?
     ctx = BN_CTX_new();
     if (1 != EC_POINT_mul(ecgrp, pt_c, NULL, pt_tmp, sk_x_bn, ctx)) {
-        printf("EC multiplication failed: [ry]Q_s");
+        LOGD("EC multiplication failed: [ry]Q_s");
     }
     BN_CTX_free(ctx); // TODO: Seriously necessary?
 
@@ -674,18 +675,17 @@ daa_on_host_response(DAA_CONTEXT *ctx, uint8_t *credentialKey, DAA_SIGNATURE *si
 
     // check K1 (Verify credentialKey)
     if (memcmp(credentialKey, credentialKey_local, ctx->symmetric_key_bytes) != 0) {
-        printf("[-] Wrong credential key provided\n");
-        exit(-1);
+        LOGD("[-] Wrong credential key provided\n");
     }
     // We then re-create the host_string (X,Y, CK, EK_pub)
     uint8_t host_str[ctx->iss_pk_len + ctx->symmetric_key_bytes + ctx->ek_pk_len];
 
-
     recalculate_host_string(ctx, ek_stored, credentialKey, host_str);
 
     if (issuer_verify_signature(ctx, sig, newSignature, host_str) != EXIT_SUCCESS) {
-        exit(22);
+        LOGD("[-] Issuer couldn't verify signature\n");
     }
+
 
     CHALLENGE_CREDENTIAL c = make_credential_data(ctx); // @1;
     uint8_t daa_credential[256];

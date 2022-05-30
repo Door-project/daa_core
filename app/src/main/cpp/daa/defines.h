@@ -46,7 +46,6 @@ typedef struct {
 
 typedef struct {
     ECC_POINT points[4];
-    uint8_t daa_sig[EC_SIGNATURE_MAX_LEN];
 } DAA_CREDENTIAL;
 
 typedef struct {
@@ -56,6 +55,12 @@ typedef struct {
     DAA_CREDENTIAL rcre;
 } DAA_SIGNATURE;
 
+
+typedef struct{
+    unsigned char credneitalKey[32];
+    int certLen;
+    DAA_SIGNATURE sig;
+} CHALLENGE_RESPONSE;
 
 typedef struct {
     CHALLENGE_CREDENTIAL join_credential;

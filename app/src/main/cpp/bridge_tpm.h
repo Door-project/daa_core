@@ -1,7 +1,9 @@
 //
 // Created by benlar on 1/4/22.
 //
-
+#ifdef __cplusplus
+extern "C" {
+#endif
 #ifndef DAA_BRIDGE_V2_BRIDGE_TPM_H
 #define DAA_BRIDGE_V2_BRIDGE_TPM_H
 
@@ -28,12 +30,12 @@ SIGNATURE_VERIFICATION tpm2_verifySignature(TPM_HANDLE key_handle, uint8_t* expe
 
 uint8_t tpm2_flushContext(TPM_HANDLE handle);
 
-uint8_t tpm2_create(TPM2B_PUBLIC *template, TPM_HANDLE parent, TPML_PCR_SELECTION *pcrSelection,
+uint8_t tpm2_create(TPM2B_PUBLIC *Keytemplate, TPM_HANDLE parent, TPML_PCR_SELECTION *pcrSelection,
                     const TPM_HANDLE *session, TPM_KEY *keyOut);
 
-uint8_t tpm2_createPrimary(TPM2B_PUBLIC *template, TPMI_RH_HIERARCHY hierarchy, PRIMARY_KEY *primaryKey);
+uint8_t tpm2_createPrimary(TPM2B_PUBLIC *keytemplate, TPMI_RH_HIERARCHY hierarchy, PRIMARY_KEY *primaryKey);
 
-uint8_t tpm2_createLoaded(TPM2B_PUBLIC *template, TPM_HANDLE parent, TPM_HANDLE *handleOut);
+uint8_t tpm2_createLoaded(TPM2B_PUBLIC *keytemplate, TPM_HANDLE parent, TPM_HANDLE *handleOut);
 
 uint8_t tpm2_policyCommandCode(TPM_HANDLE session, TPM_CC commandCode);
 
@@ -52,7 +54,7 @@ uint8_t tpm2_commit(TPM_HANDLE key, TPM2B_ECC_POINT *point, TPM_HANDLE session, 
         uint8_t tpm2_certifyCreation(TPM_HANDLE key, TPM_KEY* keyInfo, TPM_HANDLE signingHandle, TPMT_SIG_SCHEME* signScheme, CREATION_CERT *cert);
 uint8_t tpm2_certify(TPM_HANDLE keyToCertify, TPM_HANDLE signingHandle, TPMT_SIG_SCHEME* sigScheme, KEY_CERT* certOut);
 uint8_t
-tpm2_activateCredential(TPM_HANDLE activateHandle, TPM_HANDLE keyHandle, CHALLENGE_CREDENTIAL *cred, unsigned char *certBuffer);
+tpm2_activateCredential(TPM_HANDLE activateHandle, TPM_HANDLE keyHandle, CHALLENGE_CREDENTIAL *cred, unsigned char *certBuffer, int* certLen);
 
 LoadExternal_Out tpm2_loadExternal(TPM2B_PUBLIC *publicKey, TPMI_RH_HIERARCHY hierarchy, TPM_HANDLE* loadOut);
 
@@ -63,6 +65,8 @@ uint8_t legacy_tpm2_sign(TPM_HANDLE key, uint8_t *message, uint16_t len, TPM_HAN
 // Helper
 uint8_t tpm2_getPolicyDigest(TPM_HANDLE session, uint8_t* bufferOut);
 
+uint8_t tpm2_GetRandom(uint8_t noBytes, uint8_t* buff);
+
 // Policies
 uint8_t tpm2_policySigned(TPM_HANDLE publicKey, TPMI_SH_POLICY session, TPMT_SIGNATURE *signature, TPM2B_NONCE* nonce);
 uint8_t tpm2_policyPCR(TPM_HANDLE session, TPML_PCR_SELECTION* pcrSelection);
@@ -70,3 +74,6 @@ int8_t initializeTPM(int reboot);
 
 void finalizeContext();
 #endif //DAA_BRIDGE_V2_BRIDGE_TPM_H
+#ifdef __cplusplus
+}
+#endif

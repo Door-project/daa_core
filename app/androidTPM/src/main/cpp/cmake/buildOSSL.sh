@@ -8,9 +8,9 @@ if [ -d "$NDK_INSTALL_DIR/aarch64-linux-android" ]; then
 else
     echo "Creating Toolchain\n"#
 
-#    /home/${USER}/Android/Sdk/ndk/21.4.7075529/build/tools/make-standalone-toolchain.sh --toolchain=x86_64-linux-android
+    /home/${USER}/Android/Sdk/ndk/21.4.7075529/build/tools/make-standalone-toolchain.sh --toolchain=x86_64-linux-android
     echo "Decompressing\n"
- #  cd ${NDK_INSTALL_DIR} && tar -xf x86_64-linux-android.tar.bz2 && rm x86_64-linux-android.tar.bz2
+   cd ${NDK_INSTALL_DIR} && tar -xf x86_64-linux-android.tar.bz2 && rm x86_64-linux-android.tar.bz2
 
 fi
 
@@ -22,7 +22,7 @@ else
     cd /tmp/ &&  wget https://github.com/openssl/openssl/archive/refs/tags/OpenSSL_1_1_1n.tar.gz --no-check-certificate && tar -xvzf OpenSSL_1_1_1n.tar.gz
 fi
 
-export PATH=/tmp/ndk-${USER}/x86_64-linux-android/bin:${PATH}c
+export PATH=/tmp/ndk-${USER}/x86_64-linux-android/bin:${PATH}
 export ANDROID_NDK_HOME=/tmp/ndk-${USER}/x86_64-linux-android
 echo "Configuring OpenSSL\n"
 cd $OPENSSL_DIR && ./Configure android-x86_64

@@ -12,6 +12,13 @@
 #include "cryptoutils.h"
 #include "objecttemplates.h"
 
+#define VERBOSE
+#include <android/log.h>
+#define  LOG_TAG    "IBM-TPM"
+
+#define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
 TPM_RC rc = 0;
 TSS_CONTEXT *ctx = NULL;
 
@@ -23,11 +30,11 @@ void handle_TPM_error(TPM_RC last_err, int isCritical) {
     TSS_ResponseCode_toString(&msg, &submsg, &num, last_err);
 
     if (last_err == TSS_RC_NO_CONNECTION) {
-        printf("[-] An error occurred: %s (%s %s).\n", msg, submsg, num);
+        LOGD("[-] An error occurred: %s (%s %s).\n", msg, submsg, num);
     }
 
 
-    printf("[-] An error occurred: %s (%d) (%s %s).\n", msg, last_err, submsg, num);
+    LOGD("[-] An error occurred: %s (%d) (%s %s).\n", msg, last_err, submsg, num);
 
     if (isCritical) {
         TSS_Delete(ctx);
@@ -44,11 +51,11 @@ uint8_t tpm2_startAuthSession(TPMI_SH_POLICY sessionType, TPM_HANDLE *handleOut,
     StartAuthSession_Extra extra;
 
     if (handleOut == NULL) {
-        printf("[-] Handle must not be null\n");
+        LOGD("[-] Handle must not be null\n");
         return EXIT_FAILURE;
     }
 #ifdef VERBOSE
-    printf("[*] Starting new AuthSession of type %s\n",
+    LOGD("[*] Starting new AuthSession of type %s\n",
            sessionType == TPM_SE_HMAC ? "HMAC" : (sessionType == TPM_SE_POLICY ? "Policy" : "Trial"));
 #endif
 
@@ -76,7 +83,7 @@ uint8_t tpm2_startAuthSession(TPMI_SH_POLICY sessionType, TPM_HANDLE *handleOut,
     }
 
 #ifdef VERBOSE
-    printf("[+] Got handle %08x\n", out.sessionHandle);
+    LOGD("[+] Got handle %08x\n", out.sessionHandle);
 #endif
 
     *handleOut = out.sessionHandle;
@@ -91,7 +98,7 @@ int8_t initializeTPM(int reboot) {
     TSS_CONTEXT *localCtx;
 
 #ifdef VERBOSE
-    printf("[*] Initializing TPM - Creating TSS Context\n");
+    LOGD("[*] Initializing TPM - Creating TSS Context\n");
 #endif
 
     rc = TSS_Create(&ctx);
@@ -102,7 +109,7 @@ int8_t initializeTPM(int reboot) {
 #ifndef HWTPM
     if (reboot) {
 #ifdef VERBOSE
-        printf("[*] Running TPM Power Cycle on SW TPM\n");
+        LOGD("[*] Running TPM Power Cycle on SW TPM\n");
 #endif
         rc = TSS_Create(&localCtx);
 
@@ -143,7 +150,7 @@ uint8_t tpm2_flushContext(TPM_HANDLE handle) {
     in.flushHandle = handle;
 
 #ifdef VERBOSE
-    printf("[*] Flushing handle %08x\n", handle);
+    LOGD("[*] Flushing handle %08x\n", handle);
 #endif
 
     rc = TSS_Execute(ctx,
@@ -154,7 +161,7 @@ uint8_t tpm2_flushContext(TPM_HANDLE handle) {
                      TPM_RH_NULL, NULL, 0);
 
     if (rc != TPM_RC_SUCCESS) {
-        printf("[-] Flushing of handle %08x Error\n", handle);
+        LOGD("[-] Flushing of handle %08x Error\n", handle);
         handle_TPM_error(rc, NOT_CRITICAL);
         return EXIT_FAILURE;
     }
@@ -164,7 +171,7 @@ uint8_t tpm2_flushContext(TPM_HANDLE handle) {
 
 }
 
-uint8_t tpm2_create(TPM2B_PUBLIC *template, TPM_HANDLE parent, TPML_PCR_SELECTION *pcrSelection,
+uint8_t tpm2_create(TPM2B_PUBLIC *Keytemplate, TPM_HANDLE parent, TPML_PCR_SELECTION *pcrSelection,
                     const TPM_HANDLE *session, TPM_KEY *keyOut) {
     Create_In in;
     Create_Out out;
@@ -179,9 +186,9 @@ uint8_t tpm2_create(TPM2B_PUBLIC *template, TPM_HANDLE parent, TPML_PCR_SELECTIO
 
 
 #ifdef VERBOSE
-    printf("[*] Creating Key under key identified by handle %08x\n", parent);
+    LOGD("[*] Creating Key under key identified by handle %08x\n", parent);
 #endif
-    in.inPublic = *template;
+    in.inPublic = *Keytemplate;
     in.parentHandle = parent;
     in.outsideInfo.t.size = 0;
     in.inSensitive.sensitive.data.t.size = 0;
@@ -210,7 +217,7 @@ uint8_t tpm2_create(TPM2B_PUBLIC *template, TPM_HANDLE parent, TPML_PCR_SELECTIO
     return EXIT_SUCCESS;
 }
 
-uint8_t tpm2_createPrimary(TPM2B_PUBLIC *template, TPMI_RH_HIERARCHY hierarchy, PRIMARY_KEY *primaryKey) {
+uint8_t tpm2_createPrimary(TPM2B_PUBLIC *keytemplate, TPMI_RH_HIERARCHY hierarchy, PRIMARY_KEY *primaryKey) {
     CreatePrimary_In in;
     CreatePrimary_Out out;
 
@@ -222,7 +229,7 @@ uint8_t tpm2_createPrimary(TPM2B_PUBLIC *template, TPMI_RH_HIERARCHY hierarchy, 
     unsigned int sessionAttributes0 = 0;
 
 #ifdef VERBOSE
-    printf("[*] Creating primary key in %s hierarchy\n",
+    LOGD("[*] Creating primary key in %s hierarchy\n",
            hierarchy == TPM_RH_NULL ? "NULL" : (hierarchy == TPM_RH_OWNER ? "Owner" : (hierarchy == TPM_RH_PLATFORM
                                                                                        ? "Platform" : "Endorsement")));
 #endif
@@ -232,7 +239,7 @@ uint8_t tpm2_createPrimary(TPM2B_PUBLIC *template, TPMI_RH_HIERARCHY hierarchy, 
     in.primaryHandle = hierarchy;
     in.inSensitive.sensitive.data.t.size = 0;
     in.inSensitive.sensitive.userAuth.t.size = 0;
-    in.inPublic = *template;
+    in.inPublic = *keytemplate;
 
     rc = TSS_Execute(ctx,
                      (RESPONSE_PARAMETERS *) &out,
@@ -251,7 +258,7 @@ uint8_t tpm2_createPrimary(TPM2B_PUBLIC *template, TPMI_RH_HIERARCHY hierarchy, 
 
     *primaryKey = out;
 #ifdef VERBOSE
-    printf("[+] Key created with handle %08x\n", out.objectHandle);
+    LOGD("[+] Key created with handle %08x\n", out.objectHandle);
 #endif
 
     return EXIT_SUCCESS;
@@ -268,7 +275,7 @@ SIGNATURE_VERIFICATION tpm2_verifySignature(TPM_HANDLE key_handle, uint8_t* expe
     unsigned int sessionAttributes2 = 0;
 
 #ifdef VERBOSE
-    printf("[*] Verifying signature\n");
+    LOGD("[*] Verifying signature\n");
 #endif
 
     memcpy(in.digest.t.buffer,expected,mdlen);
@@ -289,10 +296,10 @@ SIGNATURE_VERIFICATION tpm2_verifySignature(TPM_HANDLE key_handle, uint8_t* expe
 
 #ifdef VERBOSE
     if(rc == 0){
-        printf("[+] Signature verified\n");
+        LOGD("[+] Signature verified\n");
     }
     else{
-        printf("[-] Signature failed to verify\n");
+        LOGD("[-] Signature failed to verify\n");
     }
 #endif
 
@@ -317,7 +324,7 @@ uint8_t tpm2_load(TPM_KEY *key, TPM_HANDLE parent, LOADED_KEY *outLoaded) {
     in.parentHandle = parent;
 
 #ifdef VERBOSE
-    printf("[*] Loading key under parent identified by %08x\n", parent);
+    LOGD("[*] Loading key under parent identified by %08x\n", parent);
 #endif
 
     rc = TSS_Execute(ctx,
@@ -338,7 +345,7 @@ uint8_t tpm2_load(TPM_KEY *key, TPM_HANDLE parent, LOADED_KEY *outLoaded) {
     *outLoaded = out;
 
 #ifdef VERBOSE
-    printf("[+] Key loaded with handle %08x\n", out.objectHandle);
+    LOGD("[+] Key loaded with handle %08x\n", out.objectHandle);
 #endif
 
     return EXIT_SUCCESS;
@@ -349,7 +356,7 @@ legacy_tpm2_sign(TPM_HANDLE key, uint8_t *message, uint16_t len, TPM_HANDLE *pol
     Sign_In in;
     Sign_Out out;
 #ifdef VERBOSE
-    printf("[*] Signing\n");
+    LOGD("[*] Signing\n");
 #endif
 
     TPMI_SH_AUTH_SESSION sessionHandle0 = policySession == NULL ? TPM_RS_PW : *policySession;
@@ -393,7 +400,7 @@ uint8_t tpm2_sign(TPM_HANDLE loadedKey, const TPM_HANDLE *session, TPMT_SIG_SCHE
     Sign_In in;
     Sign_Out out;
 #ifdef VERBOSE
-    printf("[*] Signing data\n");
+    LOGD("[*] Signing data\n");
 #endif
 
     TPMI_SH_AUTH_SESSION sessionHandle0 = session == NULL ? TPM_RS_PW : *session;
@@ -404,15 +411,15 @@ uint8_t tpm2_sign(TPM_HANDLE loadedKey, const TPM_HANDLE *session, TPMT_SIG_SCHE
     unsigned int sessionAttributes2 = 0;
 
     if (hash == NULL) {
-        printf("[-] TPM hash cannot be NULL\n");
+        LOGD("[-] TPM hash cannot be NULL\n");
         return EXIT_FAILURE;
     }
     if (signature == NULL) {
-        printf("[-] Signature variable be NULL\n");
+        LOGD("[-] Signature variable be NULL\n");
         return EXIT_FAILURE;
     }
     if (scheme == NULL) {
-        printf("[-] Signature scheme cannot be NULL\n");
+        LOGD("[-] Signature scheme cannot be NULL\n");
         return EXIT_FAILURE;
     }
 
@@ -448,16 +455,16 @@ uint8_t tpm2_hash(TPM2B_MAX_BUFFER *buffer, TPM_HANDLE hierarchy, TPM_HASH *hash
 
 
     if (buffer == NULL) {
-        printf("[-] Data to be hashed must not be NULL\n");
+        LOGD("[-] Data to be hashed must not be NULL\n");
         return EXIT_FAILURE;
     }
     if (hashOut == NULL) {
-        printf("[-] Result buffer must not be NULL\n");
+        LOGD("[-] Result buffer must not be NULL\n");
         return EXIT_FAILURE;
     }
 
 #ifdef VERBOSE
-    printf("[*] Hashing data\n");
+    LOGD("[*] Hashing data\n");
 #endif
 
     in.hashAlg = HASH_ALG;
@@ -487,12 +494,12 @@ uint8_t tpm2_commit(TPM_HANDLE key, TPM2B_ECC_POINT *point, TPMI_SH_POLICY sessi
 
 
     if (commitData == NULL) {
-        printf("Resulting buffer must not be NULL\n");
+        LOGD("Resulting buffer must not be NULL\n");
         return EXIT_FAILURE;
     }
 
 #ifdef VERBOSE
-    printf("[*] Executing Commit\n");
+    LOGD("[*] Executing Commit\n");
 #endif
 
     in.signHandle = key;
@@ -532,20 +539,20 @@ uint8_t tpm2_commit(TPM_HANDLE key, TPM2B_ECC_POINT *point, TPMI_SH_POLICY sessi
 
 uint8_t
 tpm2_activateCredential(TPM_HANDLE activateHandle, TPM_HANDLE keyHandle, CHALLENGE_CREDENTIAL *cred,
-                        unsigned char *certBuffer) {
+                        unsigned char *certBuffer, int* certLen) {
     ActivateCredential_In in;
     ActivateCredential_Out out;
 
     if (certBuffer == NULL) {
-        printf("[-] Certificate Buffer cannot be NULL\n");
+        LOGD("[-] Certificate Buffer cannot be NULL\n");
         return EXIT_FAILURE;
     }
     if (cred == NULL) {
-        printf("[-] Credential cannot be NULL\n");
+        LOGD("[-] Credential cannot be NULL\n");
         return EXIT_FAILURE;
     }
 #ifdef VERBOSE
-    printf("[+] Activating Credential for handle %08x with %08x\n", activateHandle, keyHandle);
+    LOGD("[+] Activating Credential for handle %08x with %08x\n", activateHandle, keyHandle);
 #endif
     in.activateHandle = activateHandle;
     in.keyHandle = keyHandle;
@@ -572,6 +579,7 @@ tpm2_activateCredential(TPM_HANDLE activateHandle, TPM_HANDLE keyHandle, CHALLEN
     }
 
     memcpy(certBuffer, out.certInfo.t.buffer, out.certInfo.t.size);
+    *certLen = out.certInfo.t.size;
     return EXIT_SUCCESS;
 
 }
@@ -581,7 +589,7 @@ uint8_t tpm2_policySigned(TPM_HANDLE publicKey, TPMI_SH_POLICY session, TPMT_SIG
     PolicySigned_Out out;
 
 #ifdef VERBOSE
-    printf("[*] Policy Signed\n");
+    LOGD("[*] Policy Signed\n");
 #endif
     if(nonce == NULL)
         in.nonceTPM.b.size = 0;
@@ -634,7 +642,7 @@ uint8_t tpm2_policyAuthorize(TPM_HANDLE session, TPMT_TK_VERIFIED* ticket, TPM2B
     PolicyAuthorize_In 		in;
 
 #ifdef VERBOSE
-    printf("[*] Executing Policy Authorize\n");
+    LOGD("[*] Executing Policy Authorize\n");
 #endif
     TPMI_SH_AUTH_SESSION    	sessionHandle0 = TPM_RH_NULL;
     TPMI_SH_AUTH_SESSION    	sessionHandle1 = TPM_RH_NULL;
@@ -669,7 +677,7 @@ uint8_t tpm2_policyCommandCode(TPM_HANDLE session, TPM_CC commandCode){
     PolicyCommandCode_In 	in;
 
 #ifdef VERBOSE
-    printf("[*] Executing PolicyCommandCode with Code %04x\n",commandCode);
+    LOGD("[*] Executing PolicyCommandCode with Code %04x\n",commandCode);
 #endif
 
     in.policySession = session;
@@ -698,7 +706,7 @@ uint8_t tpm2_policyPCR(TPM_HANDLE session, TPML_PCR_SELECTION *pcrSelection) {
     TPMI_SH_AUTH_SESSION sessionHandle2 = TPM_RH_NULL;
     unsigned int sessionAttributes2 = 0;
 #ifdef VERBOSE
-    printf("[*] Policy PCR\n");
+    LOGD("[*] Policy PCR\n");
 #endif
     in.pcrs = *pcrSelection;
     in.pcrDigest.t.size = 0;
@@ -732,7 +740,7 @@ uint8_t tpm2_certifyCreation(TPM_HANDLE key, TPM_KEY* keyInfo, TPM_HANDLE signin
     TPMI_SH_AUTH_SESSION    	sessionHandle2 = TPM_RH_NULL;
     unsigned int		sessionAttributes2 = 0;
 #ifdef VERBOSE
-    printf("[*] Certify Creation\n");
+    LOGD("[*] Certify Creation\n");
 #endif
     in.objectHandle = key;
     in.signHandle = signingHandle;
@@ -774,7 +782,7 @@ uint8_t tpm2_evictControl(TPM_HANDLE handle, TPM_HANDLE persistentHandle) {
     in.persistentHandle = persistentHandle;
 
 #ifdef VERBOSE
-    printf("[*] Evict Control\n");
+    LOGD("[*] Evict Control\n");
 #endif
 
     rc = TSS_Execute(ctx,
@@ -811,7 +819,7 @@ uint8_t tpm2_certify(TPM_HANDLE keyToCertify, TPM_HANDLE signingHandle, TPMT_SIG
     const char			*keyPassword = NULL;
     const char			*objectPassword = NULL;
 #ifdef VERBOSE
-    printf("[*] Certify\n");
+    LOGD("[*] Certify\n");
 #endif
 
     rc = TSS_Execute(ctx,
@@ -837,7 +845,7 @@ uint8_t tpm2_certify(TPM_HANDLE keyToCertify, TPM_HANDLE signingHandle, TPMT_SIG
 LoadExternal_Out tpm2_loadExternal(TPM2B_PUBLIC *publicKey, TPMI_RH_HIERARCHY hierarchy, TPM_HANDLE* loadOut) {
 
 #ifdef VERBOSE
-    printf("[*] Loading External Key\n");
+    LOGD("[*] Loading External Key\n");
 #endif
     LoadExternal_In 		in;
     LoadExternal_Out 		out;
@@ -869,9 +877,9 @@ LoadExternal_Out tpm2_loadExternal(TPM2B_PUBLIC *publicKey, TPMI_RH_HIERARCHY hi
 
 }
 
-uint8_t tpm2_createLoaded(TPM2B_PUBLIC *template, TPM_HANDLE parent, TPM_HANDLE *handleOut) {
+uint8_t tpm2_createLoaded(TPM2B_PUBLIC *keytemplate, TPM_HANDLE parent, TPM_HANDLE *handleOut) {
 #ifdef VERBOSE
-    printf("[*] Creating and Loading Key\n");
+    LOGD("[*] Creating and Loading Key\n");
 #endif
     CreateLoaded_In 		in;
     CreateLoaded_Out 		out;
@@ -885,7 +893,7 @@ uint8_t tpm2_createLoaded(TPM2B_PUBLIC *template, TPM_HANDLE parent, TPM_HANDLE 
     uint16_t written = 0;
     uint32_t size = sizeof(in.inPublic.t.buffer);
     uint8_t *buffer = in.inPublic.t.buffer;
-    TSS_TPMT_PUBLIC_Marshalu(&template->publicArea, &written, &buffer, &size);
+    TSS_TPMT_PUBLIC_Marshalu(&keytemplate->publicArea, &written, &buffer, &size);
 
     in.parentHandle = parent;
     in.inSensitive.sensitive.data.t.size = 0;
@@ -908,9 +916,37 @@ uint8_t tpm2_createLoaded(TPM2B_PUBLIC *template, TPM_HANDLE parent, TPM_HANDLE 
         return EXIT_FAILURE;
     }
     if(rc == 0){
-        printf("[+] Key created and loaded under handle %08x\n",out.objectHandle);
-    } else printf("[-] Key creation and load failed\n");
+        LOGD("[+] Key created and loaded under handle %08x\n",out.objectHandle);
+    } else LOGD("[-] Key creation and load failed\n");
 #endif
 
     *handleOut = out.objectHandle;
+}
+
+uint8_t tpm2_GetRandom(uint8_t noBytes, uint8_t* buff) {
+    TPM_RC                      rc = 0;
+    GetRandom_In                in;
+    GetRandom_Out               out;
+    TPMI_SH_AUTH_SESSION        sessionHandle0 = TPM_RH_NULL;
+    unsigned int                sessionAttributes0 = 0;
+    TPMI_SH_AUTH_SESSION        sessionHandle1 = TPM_RH_NULL;
+    unsigned int                sessionAttributes1 = 0;
+    TPMI_SH_AUTH_SESSION        sessionHandle2 = TPM_RH_NULL;
+    unsigned int                sessionAttributes2 = 0;
+
+    in.bytesRequested = noBytes;
+
+    rc = TSS_Execute(ctx,
+                     (RESPONSE_PARAMETERS *)&out,
+                     (COMMAND_PARAMETERS *)&in,
+                     NULL,
+                     TPM_CC_GetRandom,
+                     sessionHandle0, NULL, sessionAttributes0,
+                     sessionHandle1, NULL, sessionAttributes1,
+                     sessionHandle2, NULL, sessionAttributes2,
+                     TPM_RH_NULL, NULL, 0);
+
+    memcpy(buff,out.randomBytes.t.buffer,noBytes);
+
+    return rc;
 }

@@ -98,7 +98,7 @@ NvFileOpen(
 #   undef TO_STRING
 #   undef TO_STRING_IMPL
 #else
-    const char* s_NvFilePath = "/sdcard/Documents/TPM/NVChip";
+	const char* s_NvFilePath = "/sdcard/Documents/TPM/NVChip";
 #endif
 
     // Try to open an exist NVChip file for read/write

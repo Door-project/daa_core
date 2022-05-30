@@ -58,7 +58,9 @@ typedef struct{
 
 typedef struct {
     TPMT_PUBLIC akPub;
+    TPM2B_PUBLIC ekPub;
 } DOOR_ISSUER_REGISTRATION;
+
 
 
 

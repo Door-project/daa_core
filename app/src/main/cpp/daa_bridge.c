@@ -14,10 +14,23 @@
 #include "templates.h"
 #include "cryptoutils.h"
 #include "objecttemplates.h"
+#include <android/log.h>
+#define  LOG_TAG    "DAA-BRIDGE"
+
+#define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
 
 // Keys
 PRIMARY_KEY ek_key;
 PRIMARY_KEY daa_key_p;
+const char* walletKeyPath = "/sdcard/Documents/TPM/WK.pem";
+const char* issuerKeyPath = "/sdcard/Documents/TPM/IS.pem";
+
+const char* issuerPrivKeyPath = "/sdcard/Documents/TPM/IS_priv.pem";
+const char* walletPrivKeyPath = "/sdcard/Documents/TPM/WK_priv.pem";
+
+
 
 SIGNATURE_VERIFICATION auth_ticket;
 SIGNATURE_VERIFICATION commit_ticket;
@@ -35,13 +48,13 @@ TPM2B_PUBLIC daaTemplate;
 
 void load_wallet_key(TPM2B_PUBLIC *wkPub) {
     convertEcPemToPublic(wkPub, TYPE_SI, TPM_ALG_ECDSA, TPM_ALG_SHA256, TPM_ALG_SHA256,
-                         "/home/benlar/Projects/DAA-Bridge_v2/Wallet_keys/public.pem");
+                         walletKeyPath);
 
 }
 
 void load_is_key(TPM2B_PUBLIC *wkPub) {
     convertEcPemToPublic(wkPub, TYPE_SI, TPM_ALG_ECDSA, TPM_ALG_SHA256, TPM_ALG_SHA256,
-                         "/home/benlar/Projects/DAA-Bridge_v2/Issuer_keys/public.pem");
+                         "/sdcard/Documents/TPM/Keys/public.pem");
 
 }
 
@@ -64,7 +77,7 @@ void getNameFromKey(TPM2B_PUBLIC *publicKey, unsigned char *nameOut) {
     if (rc == 0) {
         rc = TSS_Hash_Generate(&name, marshaled.t.size, marshaled.t.buffer, 0, NULL);
     } else {
-        printf("[-] Error in marshaling key\n");
+        LOGD("[-] Error in marshaling key\n");
     }
 
 
@@ -104,7 +117,7 @@ void create_DAA_key(uint8_t *policy, PRIMARY_KEY *keyOut) {
 
     // We assume EK is already loaded?
     // TODO: check
-    printf("[ \t Bridge Creates Key \t]\n");
+    LOGD("[ \t Bridge Creates Key \t]\n");
 
     // Convert policy to TPM2B
     TPM2B_DIGEST policyDigest;
@@ -117,7 +130,7 @@ void create_DAA_key(uint8_t *policy, PRIMARY_KEY *keyOut) {
 
 }
 
-void onCreateAttestationKeyCommand(TPM2B_PUBLIC *issuer_pub, uint8_t *signedNonce, int nonceLen) {
+TPMT_PUBLIC onCreateAttestationKeyCommand(TPM2B_PUBLIC *issuer_pub, uint8_t *signedNonce, int nonceLen) {
 
     uint8_t policyDigest[DIGEST_SIZE];
     uint8_t manifestDigest[DIGEST_SIZE];
@@ -133,7 +146,7 @@ void onCreateAttestationKeyCommand(TPM2B_PUBLIC *issuer_pub, uint8_t *signedNonc
 
     // Define a Policy Digest
     KEY walletKey = request_key(WALLET_KEY);
-    printf("[ \t Bridge Calculated Policy (PolicyAuthorize by Issuer) \t]\n");
+    LOGD("[ \t Bridge Calculated Policy (PolicyAuthorize by Issuer) \t]\n");
     defineAttestationKeyPolicy(issuer_pub, policyDigest);
 
     // Create a get certificate
@@ -143,8 +156,9 @@ void onCreateAttestationKeyCommand(TPM2B_PUBLIC *issuer_pub, uint8_t *signedNonc
     //  memset(reg.name, 0, NAME_LEN);
 
 
+    return daa_key_p.outPublic.publicArea;
     // Issuer contact
-    send_issuer_registration(&reg);
+ //   send_issuer_registration(&reg);
 
     // Return
 
@@ -152,7 +166,7 @@ void onCreateAttestationKeyCommand(TPM2B_PUBLIC *issuer_pub, uint8_t *signedNonc
 
 // Runs setup to ensure all is ready
 TPM2B_PUBLIC setup() {
-    printf("[ \t Initializing System Setup \t]\n");
+    LOGD("[ \t Initializing System Setup \t]\n");
     initializeTPM(REBOOT); // Reboots only if SW TPM
     TPM2B_PUBLIC pk;
     // Create Endorsement
@@ -162,14 +176,22 @@ TPM2B_PUBLIC setup() {
     // Create the key
     tpm2_createPrimary(&ekTemplate, TPM_RH_ENDORSEMENT, &ek_key);
 
+    LOGD("Evicting Control...\n");
+
     // Evict it to NV-RAM
     if (tpm2_evictControl(ek_key.objectHandle, EK_PERSISTENT_HANDLE) != EXIT_SUCCESS) {
+        LOGD("Evicting Control failed - already exists? Removing old one...\n");
+
         // Remove old one
         tpm2_evictControl(EK_PERSISTENT_HANDLE, EK_PERSISTENT_HANDLE);
+        LOGD("Inserting new one...\n");
 
         // Add the new one
         if (tpm2_evictControl(ek_key.objectHandle, EK_PERSISTENT_HANDLE) != EXIT_SUCCESS) {
-            exit(NV_ERROR);
+            LOGD("Sumting wong...\n");
+
+            LOGD("HUUUUUUUUUUUUUUUUUUUGE ERROR\n");
+            //exit(NV_ERROR);
         }
     }
 
@@ -216,27 +238,65 @@ void satisfyPolicy(TPML_PCR_SELECTION *sel, TPM_HANDLE sess) {
 
 }
 
+void onIssuerFCRE(FULL_CREDENTIAL fcre){
+    unsigned char ck2[16];
 
-void onIssuerChallenge(CHALLENGE_CREDENTIAL challenge, AUTHORIZATION genereal_auth, AUTHORIZATION commit_authIn,
+    DAA_CONTEXT *ctx = new_daa_context();
+    int certLen;
+    tpm2_activateCredential(daa_key_p.objectHandle, EK_PERSISTENT_HANDLE, &fcre.join_credential,
+                            ck2,&certLen);
+
+    if (daa_decrypt_credential_data(ctx, fcre.credentialEncrypted, fcre.encryptedLength, ck2,
+                                    &credential) != RC_OK) {
+        LOGD("[-] Error in decrypting certificate\n");
+    }
+
+    tpm2_flushContext(daa_key_p.objectHandle);
+
+    hash_begin(HASH_ALG);
+    hash_update(credential.points[0].x_coord, EC_POINT_MAX_LEN);
+    hash_update(credential.points[0].y_coord, EC_POINT_MAX_LEN);
+    hash_update(credential.points[1].x_coord, EC_POINT_MAX_LEN);
+    hash_update(credential.points[1].y_coord, EC_POINT_MAX_LEN);
+    hash_update(credential.points[2].x_coord, EC_POINT_MAX_LEN);
+    hash_update(credential.points[2].y_coord, EC_POINT_MAX_LEN);
+    hash_update(credential.points[3].x_coord, EC_POINT_MAX_LEN);
+    hash_update(credential.points[3].y_coord, EC_POINT_MAX_LEN);
+    hash_final(credentialDigest);
+
+    free_daa_context(ctx);
+
+}
+CHALLENGE_RESPONSE onIssuerChallenge(CHALLENGE_CREDENTIAL challenge, AUTHORIZATION signAuth,
+                       AUTHORIZATION commit_authIn,
                        TPML_PCR_SELECTION pcr) {
 
     // Step 1: Load the Isser public (auhtorization) key.
     TPM2B_PUBLIC issAPK;
     TPM_HANDLE issHandle;
+    CHALLENGE_RESPONSE cr;
+
+    for(int i = 0; i < 4; i++){
+        cr.sig.rcre.points[i].coord_len = 0;
+    }
+
+
+
     commit_auth = commit_authIn;
 
     // TODO: Cache?
     convertEcPemToPublic(&issAPK, TYPE_SI, TPM_ALG_ECDSA, TPM_ALG_SHA256, TPM_ALG_SHA256,
-                         "/home/benlar/Projects/DAA-Bridge_v2/Issuer_keys/public.pem");
+                         issuerKeyPath);
 
 
     LoadExternal_Out ldIs = tpm2_loadExternal(&issAPK, TPM_RH_ENDORSEMENT, &issHandle);
     issName = ldIs.name;
-    sign_auth = genereal_auth;
+    sign_auth = signAuth;
 
     // Step 2: Verify the signature to obtain a ticket
-    auth_ticket = tpm2_verifySignature(issHandle, genereal_auth.digest, DIGEST_SIZE, genereal_auth.signature,
-                                       genereal_auth.sigLen);
+    auth_ticket = tpm2_verifySignature(issHandle, signAuth.digest, DIGEST_SIZE,
+                                       signAuth.signature,
+                                       signAuth.sigLen);
 
     commit_ticket = tpm2_verifySignature(issHandle, commit_auth.digest, DIGEST_SIZE,
                                          commit_auth.signature, commit_auth.sigLen);
@@ -247,15 +307,15 @@ void onIssuerChallenge(CHALLENGE_CREDENTIAL challenge, AUTHORIZATION genereal_au
 
     // Step 4: Get credential key
     DAA_CONTEXT *ctx = new_daa_context();
-    unsigned char credneitalKey[ctx->symmetric_key_bytes];
-    tpm2_activateCredential(daa_key_p.objectHandle, EK_PERSISTENT_HANDLE, &challenge, credneitalKey);
+    tpm2_activateCredential(daa_key_p.objectHandle, EK_PERSISTENT_HANDLE, &challenge,
+                            cr.credneitalKey, &cr.certLen);
 
     // Commit
     COMMIT_DATA cd;
 
     TPM_HANDLE session;
 
-    printf("\n[ \t Bridge Satisfies Authorized Policy (CommandCode & Commit) to Commit\t]\n");
+    LOGD("\n[ \t Bridge Satisfies Authorized Policy (CommandCode & Commit) to Commit\t]\n");
     tpm2_startAuthSession(TPM_SE_POLICY, &session, NULL);
 
     tpm2_policyCommandCode(session, TPM_CC_Commit);
@@ -264,7 +324,8 @@ void onIssuerChallenge(CHALLENGE_CREDENTIAL challenge, AUTHORIZATION genereal_au
     expected.t.size = DIGEST_SIZE;
 
     tpm2_policyAuthorize(session, &commit_ticket.validation, &ldIs.name, &expected);
-    tpm2_commit(daa_key_p.objectHandle, NULL, session, NULL, NULL, &cd); // Automatically flush session
+    tpm2_commit(daa_key_p.objectHandle, NULL, session, NULL, NULL,
+                &cd); // Automatically flush session
 
 
 
@@ -282,7 +343,7 @@ void onIssuerChallenge(CHALLENGE_CREDENTIAL challenge, AUTHORIZATION genereal_au
     memcpy(commit_data_daa.x_coord, cd.E.point.x.t.buffer, cd.E.point.x.t.size);
     memcpy(commit_data_daa.y_coord, cd.E.point.y.t.buffer, cd.E.point.y.t.size);
     commit_data_daa.coord_len = cd.E.point.x.t.size;
-    daa_prepare_host_str(ctx, &daaPoint, &commit_data_daa, credneitalKey,
+    daa_prepare_host_str(ctx, &daaPoint, &commit_data_daa, cr.credneitalKey,
                          ek_key.outPublic.publicArea.unique.rsa.t.buffer,
                          host_str);
 
@@ -302,47 +363,36 @@ void onIssuerChallenge(CHALLENGE_CREDENTIAL challenge, AUTHORIZATION genereal_au
 
     // Satisfy Policy PolicySigned && PolicyPCR
     pcrSelection = pcr;
-    printf("\n[ \t Bridge Satisfies Authorized Policy (PCR & Wallet Sign) to Sign\t]\n");
+    LOGD("\n[ \t Bridge Satisfies Authorized Policy (PCR & Wallet Sign) to Sign\t]\n");
 
     satisfyPolicy(&pcr, signSession);
 
 
     TPMT_SIGNATURE sig_daa;
-    tpm2_sign(daa_key_p.objectHandle, &signSession, &inScheme, &host_string_digest, &sig_daa); // Flushes session
+    tpm2_sign(daa_key_p.objectHandle, &signSession, &inScheme, &host_string_digest,
+              &sig_daa); // Flushes session
 
 
-    DAA_SIGNATURE daaSig;
-    memcpy(daaSig.signatureR, sig_daa.signature.ecdaa.signatureR.t.buffer, sig_daa.signature.ecdaa.signatureR.t.size);
-    memcpy(daaSig.signatureS, sig_daa.signature.ecdaa.signatureS.t.buffer, sig_daa.signature.ecdaa.signatureS.t.size);
+    memcpy(cr.sig.signatureR, sig_daa.signature.ecdaa.signatureR.t.buffer,
+           sig_daa.signature.ecdaa.signatureR.t.size);
+    LOGD("SigR size: %d",sig_daa.signature.ecdaa.signatureR.t.size);
+    LOGD("SigS size: %d",sig_daa.signature.ecdaa.signatureS.t.size);
 
-    daa_finalize_credential_signature(ctx, &daaSig, host_string_digest.outHash.t.buffer);
+    memcpy(cr.sig.signatureS, sig_daa.signature.ecdaa.signatureS.t.buffer,
+           sig_daa.signature.ecdaa.signatureS.t.size);
 
-    printf("\n[ \t DOOR Issuer Returns Full Credential\t]\n");
+    daa_finalize_credential_signature(ctx, &cr.sig, host_string_digest.outHash.t.buffer);
 
-    FULL_CREDENTIAL fcre = daa_on_host_response(ctx, credneitalKey, &daaSig, 1);
 
-    unsigned char ck2[16];
-    tpm2_activateCredential(daa_key_p.objectHandle, EK_PERSISTENT_HANDLE, &fcre.join_credential, ck2);
+//    FULL_CREDENTIAL fcre = daa_on_host_response(ctx, cr.credneitalKey, &cr.sig, 1);
 
-    if (daa_decrypt_credential_data(ctx, fcre.credentialEncrypted, fcre.encryptedLength, ck2, &credential) != RC_OK) {
-        printf("[-] Error in decrypting certificate\n");
-    }
+    return cr;
 
-    tpm2_flushContext(daa_key_p.objectHandle);
 
-    hash_begin(HASH_ALG);
-    hash_update(credential.points[0].x_coord,EC_POINT_MAX_LEN);
-    hash_update(credential.points[0].y_coord,EC_POINT_MAX_LEN);
-    hash_update(credential.points[1].x_coord,EC_POINT_MAX_LEN);
-    hash_update(credential.points[1].y_coord,EC_POINT_MAX_LEN);
-    hash_update(credential.points[2].x_coord,EC_POINT_MAX_LEN);
-    hash_update(credential.points[2].y_coord,EC_POINT_MAX_LEN);
-    hash_update(credential.points[3].x_coord,EC_POINT_MAX_LEN);
-    hash_update(credential.points[3].y_coord,EC_POINT_MAX_LEN);
-    hash_final(credentialDigest);
+
+    // onIssuerFCRE(fcre);
 
     free_daa_context(ctx);
-
 
 
     /* // Sign?
@@ -421,9 +471,9 @@ void onIssuerChallenge(CHALLENGE_CREDENTIAL challenge, AUTHORIZATION genereal_au
 
 
      if (daa_verify_signature(ctx, buff, 2, &dsig_final, &rcre) == RC_OK) {
-         printf("[+] Signature verified\n");
+         LOGD("[+] Signature verified\n");
      } else {
-         printf("Error in verification\n");
+         LOGD("Error in verification\n");
      }
 
  */
@@ -435,7 +485,8 @@ void requestNonce(TPM2B_NONCE *nonceOut) {
     signNonce = *nonceOut;
 }
 
-DAA_SIGNATURE execute_daa_sign(uint8_t *msg, size_t msgLen, uint8_t *signed_nonce, size_t signed_nonce_len) {
+DAA_SIGNATURE
+execute_daa_sign(uint8_t *msg, size_t msgLen, uint8_t *signed_nonce, size_t signed_nonce_len) {
 
     // Step 1: Prepare DAA Signature
     tpm2_createPrimary(&daaTemplate, TPM_RH_ENDORSEMENT, &daa_key_p);
@@ -449,7 +500,7 @@ DAA_SIGNATURE execute_daa_sign(uint8_t *msg, size_t msgLen, uint8_t *signed_nonc
     memcpy(nonce_sig, signed_nonce, signed_nonce_len);
     nonce_len = signed_nonce_len;
 
-    printf("\n[ \t Bridge Randomizes Credential & Satisfies Commit Policy \t]\n");
+    LOGD("\n[ \t Bridge Randomizes Credential & Satisfies Commit Policy \t]\n");
     DAA_CREDENTIAL rcre = daa_prepare_commit(ctx, credential, &ci);
 
     TPM2B_ECC_POINT p1;
@@ -460,7 +511,6 @@ DAA_SIGNATURE execute_daa_sign(uint8_t *msg, size_t msgLen, uint8_t *signed_nonc
 
     TPM2B_SENSITIVE_DATA sense;
     memcpy(sense.t.buffer, ci.secret, ci.secretLen);
-
 
 
     tpm2_startAuthSession(TPM_SE_POLICY, &session, NULL);
@@ -506,7 +556,7 @@ DAA_SIGNATURE execute_daa_sign(uint8_t *msg, size_t msgLen, uint8_t *signed_nonc
 
 
     // Satisfy
-    printf("\n[ \t Bridge Satisfies Sign Policy\t]\n");
+    LOGD("\n[ \t Bridge Satisfies Sign Policy\t]\n");
     satisfyPolicy(&pcrSelection, signSession);
 
     TPMT_SIGNATURE finalSIg;
@@ -522,11 +572,11 @@ DAA_SIGNATURE execute_daa_sign(uint8_t *msg, size_t msgLen, uint8_t *signed_nonc
 
     dsig_final.rcre = rcre;
 
-    printf("\n[ \t Verifier Verifies Signature\t]\n");
+    LOGD("\n[ \t Verifier Verifies Signature\t]\n");
     if (daa_verify_signature(ctx, msg, msgLen, &dsig_final) == RC_OK) {
-        printf("[+] Signature verified\n");
+        LOGD("[+] Signature verified\n");
     } else {
-        printf("Error in verification\n");
+        LOGD("Error in verification\n");
     }
 
     free_daa_context(ctx);
@@ -536,3 +586,36 @@ DAA_SIGNATURE execute_daa_sign(uint8_t *msg, size_t msgLen, uint8_t *signed_nonc
 
 }
 
+
+void writeKeyIfNotExists(uint8_t *key, int keyLen, char* keyName) {
+    int i;
+    FILE *fptr;
+    fptr = fopen(keyName, "w+"); // overwrites
+    if(fptr == NULL){
+        LOGD("Can't Write Key\n");
+    } else{
+        LOGD("Key write to %s success\n",keyName);
+    }
+    for (i = 0; i < keyLen; i++) {
+        fputc(key[i], fptr);
+    }
+
+    fclose(fptr);
+}
+
+void writeWalletKey(uint8_t *key, int keyLen) {
+    writeKeyIfNotExists(key,keyLen,walletKeyPath);
+}
+
+void writeIssuerKey(uint8_t *key, int keyLen) {
+    writeKeyIfNotExists(key,keyLen,issuerKeyPath);
+}
+
+void writeIssuerPrivKey(uint8_t *key, int keyLen) {
+    writeKeyIfNotExists(key,keyLen,issuerPrivKeyPath);
+}
+
+
+void writeWalletPrivKey(uint8_t *key, int keyLen) {
+    writeKeyIfNotExists(key,keyLen,walletPrivKeyPath);
+}
