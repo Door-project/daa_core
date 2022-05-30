@@ -50,7 +50,6 @@ include_directories(/home/benlar/Projects/AndroidLibs/incubator-milagro-crypto-c
 #endif()
 #message(STATUS "Ossl: ${CMAKE_SOURCE_DIR}/ssl_lib")
 
-find_library(DAA_OSSL_LIB crypto HINTS ${CMAKE_SOURCE_DIR}/ssl_lib)
 find_library( # Sets the name of the path variable.
         log-lib
 

@@ -116,7 +116,7 @@ int wallet_sign_nonce(TPM2B_NONCE *nonce, uint8_t *digestOut, char *keyLocation,
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_example_daabridgecpp_MainActivity_getByteString(JNIEnv *env, jobject thiz) {
+Java_com_daaBridge_daabridgecpp_DAAInterface_getByteString(JNIEnv *env, jobject thiz) {
     // TODO: implement getByteString()
 
     uint8_t buff[5];
@@ -129,7 +129,7 @@ Java_com_example_daabridgecpp_MainActivity_getByteString(JNIEnv *env, jobject th
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_example_daabridgecpp_MainActivity_initializeTPM(JNIEnv *env, jobject thiz) {
+Java_com_daaBridge_daabridgecpp_DAAInterface_initializeTPM(JNIEnv *env, jobject thiz) {
     ek = setup();
 
 }
@@ -137,7 +137,7 @@ Java_com_example_daabridgecpp_MainActivity_initializeTPM(JNIEnv *env, jobject th
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_example_daabridgecpp_MainActivity_registerWalletPK(JNIEnv *env, jobject thiz,
+Java_com_daaBridge_daabridgecpp_DAAInterface_registerWalletPK(JNIEnv *env, jobject thiz,
                                                             jbyteArray pem_file) {
     int len = env->GetArrayLength(pem_file);
     uint8_t *buf = new unsigned char[len];
@@ -150,7 +150,7 @@ Java_com_example_daabridgecpp_MainActivity_registerWalletPK(JNIEnv *env, jobject
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_example_daabridgecpp_MainActivity_registerIssuerPK(JNIEnv *env, jobject thiz,
+Java_com_daaBridge_daabridgecpp_DAAInterface_registerIssuerPK(JNIEnv *env, jobject thiz,
                                                             jbyteArray pem_file) {
     int len = env->GetArrayLength(pem_file);
     uint8_t *buf = new unsigned char[len];
@@ -162,7 +162,7 @@ Java_com_example_daabridgecpp_MainActivity_registerIssuerPK(JNIEnv *env, jobject
 }
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_example_daabridgecpp_MainActivity_DAAIssuerRegistration(JNIEnv *env, jobject thiz,
+Java_com_daaBridge_daabridgecpp_DAAInterface_DAAIssuerRegistration(JNIEnv *env, jobject thiz,
                                                                  jbyteArray signedNonce
 ) {
 
@@ -176,7 +176,7 @@ Java_com_example_daabridgecpp_MainActivity_DAAIssuerRegistration(JNIEnv *env, jo
 
 extern "C"
 JNIEXPORT jbyteArray JNICALL
-Java_com_example_daabridgecpp_MainActivity_startDAASession(JNIEnv *env, jobject thiz) {
+Java_com_daaBridge_daabridgecpp_DAAInterface_startDAASession(JNIEnv *env, jobject thiz) {
     TPM2B_NONCE nonce;
     requestNonce(&nonce);
 
@@ -188,7 +188,7 @@ Java_com_example_daabridgecpp_MainActivity_startDAASession(JNIEnv *env, jobject 
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_example_daabridgecpp_MainActivity_DAASign(JNIEnv *env, jobject thiz, jbyteArray data,
+Java_com_daaBridge_daabridgecpp_DAAInterface_DAASign(JNIEnv *env, jobject thiz, jbyteArray data,
                                                    jbyteArray signed_nonce) {
 
     int nonceLen = env->GetArrayLength(signed_nonce);
@@ -201,7 +201,8 @@ Java_com_example_daabridgecpp_MainActivity_DAASign(JNIEnv *env, jobject thiz, jb
 
     DAA_SIGNATURE sig = execute_daa_sign(dataBuf, dataLen, signedNonce_C, nonceLen);
 
-    return env->NewStringUTF(marshalDAASignature(&sig));
+    return  env->NewStringUTF("hello");
+   // return env->NewStringUTF(marshalDAASignature(&sig));
     //TODO: Return signature
 }
 
@@ -211,7 +212,7 @@ void marshalDAASignature(DAA_SIGNATURE *ptr, unsigned char* bufferOut) {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_example_daabridgecpp_MainActivity_runFullDemo(JNIEnv *env, jobject thiz) {
+Java_com_daaBridge_daabridgecpp_DAAInterface_runFullDemo(JNIEnv *env, jobject thiz) {
     TSS_SetProperty(NULL, TPM_TRACE_LEVEL, "1");
     LOGD("Hello, World!\n");
 
@@ -256,7 +257,7 @@ Java_com_example_daabridgecpp_MainActivity_runFullDemo(JNIEnv *env, jobject thiz
 }
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_example_daabridgecpp_MainActivity_registerIssuer_1priv(JNIEnv *env, jobject thiz,
+Java_com_daaBridge_daabridgecpp_DAAInterface_registerIssuer_1priv(JNIEnv *env, jobject thiz,
                                                                 jbyteArray pem_file) {
     int len = env->GetArrayLength(pem_file);
     uint8_t *buf = new unsigned char[len];
@@ -265,7 +266,7 @@ Java_com_example_daabridgecpp_MainActivity_registerIssuer_1priv(JNIEnv *env, job
 }
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_example_daabridgecpp_MainActivity_registerWallet_1priv(JNIEnv *env, jobject thiz,
+Java_com_daaBridge_daabridgecpp_DAAInterface_registerWallet_1priv(JNIEnv *env, jobject thiz,
                                                                 jbyteArray pem_file) {
     int len = env->GetArrayLength(pem_file);
     uint8_t *buf = new unsigned char[len];
@@ -369,7 +370,7 @@ TPM2B_NONCE parseNonce(const char *data) {
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_example_daabridgecpp_MainActivity_DAAEnable(JNIEnv *env, jobject thiz) {
+Java_com_daaBridge_daabridgecpp_DAAInterface_DAAEnable(JNIEnv *env, jobject thiz) {
 
     // Get EndorsementKey
     ek = setup();
@@ -386,7 +387,7 @@ Java_com_example_daabridgecpp_MainActivity_DAAEnable(JNIEnv *env, jobject thiz) 
 }
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_example_daabridgecpp_MainActivity_CreateEnableResponse(JNIEnv *env, jobject thiz,
+Java_com_daaBridge_daabridgecpp_DAAInterface_CreateEnableResponse(JNIEnv *env, jobject thiz,
                                                                 jbyteArray signedNonce) {
 
     int nonceLen = env->GetArrayLength(signedNonce);
@@ -652,7 +653,7 @@ int buildChallengeResponse(CHALLENGE_RESPONSE cr, char *bufferOut) {
 
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_example_daabridgecpp_MainActivity_HandleIssuerChallenge(JNIEnv *env, jobject thiz,
+Java_com_daaBridge_daabridgecpp_DAAInterface_HandleIssuerChallenge(JNIEnv *env, jobject thiz,
                                                                  jstring issuerChallenge) {
     // TODO: implement HandleIssuerChallenge()
 
@@ -717,7 +718,7 @@ FULL_CREDENTIAL parseFullCredential(const char *json) {
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_example_daabridgecpp_MainActivity_EnableDAACredential(JNIEnv *env, jobject thiz,
+Java_com_daaBridge_daabridgecpp_DAAInterface_EnableDAACredential(JNIEnv *env, jobject thiz,
                                                                jstring fullcre) {
     FULL_CREDENTIAL fcre = parseFullCredential(env->GetStringUTFChars(fullcre, 0));
     onIssuerFCRE(fcre);
@@ -725,7 +726,7 @@ Java_com_example_daabridgecpp_MainActivity_EnableDAACredential(JNIEnv *env, jobj
 }
 extern "C"
 JNIEXPORT jbyteArray JNICALL
-Java_com_example_daabridgecpp_MainActivity_prepareEnableResponse(JNIEnv *env, jobject thiz,
+Java_com_daaBridge_daabridgecpp_DAAInterface_prepareEnableResponse(JNIEnv *env, jobject thiz,
                                                                  jstring json) {
 
     const char *data = env->GetStringUTFChars(json, 0);
@@ -748,7 +749,7 @@ Java_com_example_daabridgecpp_MainActivity_prepareEnableResponse(JNIEnv *env, jo
 }
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_example_daabridgecpp_MainActivity_getIssuerChallenge(JNIEnv *env, jobject thiz,
+Java_com_daaBridge_daabridgecpp_DAAInterface_getIssuerChallenge(JNIEnv *env, jobject thiz,
                                                               jstring json_nonce_and_ek) {
 
     const char *issuer_challenge = send_issuer_registration(
@@ -761,13 +762,13 @@ Java_com_example_daabridgecpp_MainActivity_getIssuerChallenge(JNIEnv *env, jobje
 }
 extern "C"
 JNIEXPORT jstring JNICALL
-Java_com_example_daabridgecpp_MainActivity_sendChallengeResponse(JNIEnv *env, jobject thiz,
+Java_com_daaBridge_daabridgecpp_DAAInterface_sendChallengeResponse(JNIEnv *env, jobject thiz,
                                                                  jstring cr) {
     return (*env).NewStringUTF(send_challenge_response(env->GetStringUTFChars(cr, 0)));
 }
 extern "C"
 JNIEXPORT jbyteArray JNICALL
-Java_com_example_daabridgecpp_MainActivity_walletDoMeASignPlz(JNIEnv *env, jobject thiz,
+Java_com_daaBridge_daabridgecpp_DAAInterface_walletDoMeASignPlz(JNIEnv *env, jobject thiz,
                                                               jbyteArray nonce) {
     int nonceLen = env->GetArrayLength(nonce);
     uint8_t *noncetosign = new unsigned char[nonceLen];

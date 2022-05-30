@@ -1,26 +1,16 @@
 #include <jni.h>
 #include <string>
-
-extern "C" {
 #include "TPMInterface.h"
-}
 
 
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_example_androidtpm_AndroidTPM_startTPM(JNIEnv *env, jobject thiz);
-
-
-extern "C" void Java_com_example_androidtpm_AndroidTPM_startTPM(JNIEnv *env, jobject thiz) {
+Java_com_daaBridge_androidtpm_AndroidTPM_startTPM(JNIEnv *env, jobject thiz) {
+    // TODO: implement startTPM()
     startInternalTPM();
-
 }
-
-
 extern "C"
 JNIEXPORT void JNICALL
-Java_com_example_androidtpm_AndroidTPM_endTPM(JNIEnv *env, jobject thiz);
-
-extern "C" void Java_com_example_androidtpm_AndroidTPM_endTPM(JNIEnv *env, jobject thiz) {
+Java_com_daaBridge_androidtpm_AndroidTPM_endTPM(JNIEnv *env, jobject thiz) {
     // TODO: implement endTPM()
 }

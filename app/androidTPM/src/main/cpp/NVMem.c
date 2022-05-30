@@ -69,6 +69,15 @@
 #include <string.h>
 #include <assert.h>
 #include "Platform.h"
+#include <android/log.h>
+
+
+#define  LOG_TAG    "DAA-TPM"
+
+#define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+#define  LOGE(...)  __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+
 #if FILE_BACKED_NV
 #   include         <stdio.h>
 static FILE                *s_NvFile = NULL;		/* kgold made these static */
@@ -110,9 +119,9 @@ NvFileOpen(
 #   endif
 
     if(s_NvFile == NULL){
-		printf("NV FIle failed to make\n");
+		LOGD("NV FIle failed to make\n");
 	}else{
-		printf("NV FIle created\n");
+		LOGD("NV FIle created\n");
 
 	}
 	return (s_NvFile == NULL) ? -1 : 0;
@@ -220,7 +229,7 @@ _plat__NVEnable(
     // If the file exists
     if(NvFileOpen("r+b") >= 0)
 	{
-    	printf("NV FIle already exists\n");
+    	LOGD("NV FIle already exists\n");
 		long    fileSize = NvFileSize(SEEK_SET);    // get the file size and leave the
 	    // file pointer at the start
 	    //
@@ -239,7 +248,7 @@ _plat__NVEnable(
     // If NVChip file does not exist, try to create it for read/write.
     else if(NvFileOpen("w+b") >= 0)
 	{
-
+		LOGD("NVChip doesnt exists, create RW");
 	    NvFileCommit();             // Initialize the file
 	    s_NeedsManufacture = TRUE;
 	}

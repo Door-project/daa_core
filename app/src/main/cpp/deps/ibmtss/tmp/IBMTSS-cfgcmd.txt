@@ -1,1 +1,0 @@
-cmd='cd;<SOURCE_DIR>;&&;autoreconf;-i;&&;./configure;--disable-hwtpm'
