@@ -15,6 +15,7 @@
 #include "cryptoutils.h"
 #include "objecttemplates.h"
 #include <android/log.h>
+
 #define  LOG_TAG    "DAA-BRIDGE"
 
 #define  LOGD(...)  __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
@@ -24,12 +25,11 @@
 // Keys
 PRIMARY_KEY ek_key;
 PRIMARY_KEY daa_key_p;
-const char* walletKeyPath = "/sdcard/Documents/TPM/WK.pem";
-const char* issuerKeyPath = "/sdcard/Documents/TPM/IS.pem";
+const char *walletKeyPath = "/sdcard/Documents/TPM/WK.pem";
+const char *issuerKeyPath = "/sdcard/Documents/TPM/IS.pem";
 
-const char* issuerPrivKeyPath = "/sdcard/Documents/TPM/IS_priv.pem";
-const char* walletPrivKeyPath = "/sdcard/Documents/TPM/WK_priv.pem";
-
+const char *issuerPrivKeyPath = "/sdcard/Documents/TPM/IS_priv.pem";
+const char *walletPrivKeyPath = "/sdcard/Documents/TPM/WK_priv.pem";
 
 
 SIGNATURE_VERIFICATION auth_ticket;
@@ -130,7 +130,8 @@ void create_DAA_key(uint8_t *policy, PRIMARY_KEY *keyOut) {
 
 }
 
-TPMT_PUBLIC onCreateAttestationKeyCommand(TPM2B_PUBLIC *issuer_pub, uint8_t *signedNonce, int nonceLen) {
+TPMT_PUBLIC
+onCreateAttestationKeyCommand(TPM2B_PUBLIC *issuer_pub, uint8_t *signedNonce, int nonceLen) {
 
     uint8_t policyDigest[DIGEST_SIZE];
     uint8_t manifestDigest[DIGEST_SIZE];
@@ -158,7 +159,7 @@ TPMT_PUBLIC onCreateAttestationKeyCommand(TPM2B_PUBLIC *issuer_pub, uint8_t *sig
 
     return daa_key_p.outPublic.publicArea;
     // Issuer contact
- //   send_issuer_registration(&reg);
+    //   send_issuer_registration(&reg);
 
     // Return
 
@@ -238,13 +239,13 @@ void satisfyPolicy(TPML_PCR_SELECTION *sel, TPM_HANDLE sess) {
 
 }
 
-void onIssuerFCRE(FULL_CREDENTIAL fcre){
+void onIssuerFCRE(FULL_CREDENTIAL fcre) {
     unsigned char ck2[16];
 
     DAA_CONTEXT *ctx = new_daa_context();
     int certLen;
     tpm2_activateCredential(daa_key_p.objectHandle, EK_PERSISTENT_HANDLE, &fcre.join_credential,
-                            ck2,&certLen);
+                            ck2, &certLen);
 
     if (daa_decrypt_credential_data(ctx, fcre.credentialEncrypted, fcre.encryptedLength, ck2,
                                     &credential) != RC_OK) {
@@ -267,19 +268,19 @@ void onIssuerFCRE(FULL_CREDENTIAL fcre){
     free_daa_context(ctx);
 
 }
+
 CHALLENGE_RESPONSE onIssuerChallenge(CHALLENGE_CREDENTIAL challenge, AUTHORIZATION signAuth,
-                       AUTHORIZATION commit_authIn,
-                       TPML_PCR_SELECTION pcr) {
+                                     AUTHORIZATION commit_authIn,
+                                     TPML_PCR_SELECTION pcr) {
 
     // Step 1: Load the Isser public (auhtorization) key.
     TPM2B_PUBLIC issAPK;
     TPM_HANDLE issHandle;
     CHALLENGE_RESPONSE cr;
 
-    for(int i = 0; i < 4; i++){
+    for (int i = 0; i < 4; i++) {
         cr.sig.rcre.points[i].coord_len = 0;
     }
-
 
 
     commit_auth = commit_authIn;
@@ -375,8 +376,8 @@ CHALLENGE_RESPONSE onIssuerChallenge(CHALLENGE_CREDENTIAL challenge, AUTHORIZATI
 
     memcpy(cr.sig.signatureR, sig_daa.signature.ecdaa.signatureR.t.buffer,
            sig_daa.signature.ecdaa.signatureR.t.size);
-    LOGD("SigR size: %d",sig_daa.signature.ecdaa.signatureR.t.size);
-    LOGD("SigS size: %d",sig_daa.signature.ecdaa.signatureS.t.size);
+    LOGD("SigR size: %d", sig_daa.signature.ecdaa.signatureR.t.size);
+    LOGD("SigS size: %d", sig_daa.signature.ecdaa.signatureS.t.size);
 
     memcpy(cr.sig.signatureS, sig_daa.signature.ecdaa.signatureS.t.buffer,
            sig_daa.signature.ecdaa.signatureS.t.size);
@@ -587,14 +588,14 @@ execute_daa_sign(uint8_t *msg, size_t msgLen, uint8_t *signed_nonce, size_t sign
 }
 
 
-void writeKeyIfNotExists(uint8_t *key, int keyLen, char* keyName) {
+void writeKeyIfNotExists(uint8_t *key, int keyLen, char *keyName) {
     int i;
     FILE *fptr;
     fptr = fopen(keyName, "w+"); // overwrites
-    if(fptr == NULL){
+    if (fptr == NULL) {
         LOGD("Can't Write Key\n");
-    } else{
-        LOGD("Key write to %s success\n",keyName);
+    } else {
+        LOGD("Key write to %s success\n", keyName);
     }
     for (i = 0; i < keyLen; i++) {
         fputc(key[i], fptr);
@@ -604,18 +605,27 @@ void writeKeyIfNotExists(uint8_t *key, int keyLen, char* keyName) {
 }
 
 void writeWalletKey(uint8_t *key, int keyLen) {
-    writeKeyIfNotExists(key,keyLen,walletKeyPath);
+    writeKeyIfNotExists(key, keyLen, walletKeyPath);
 }
 
 void writeIssuerKey(uint8_t *key, int keyLen) {
-    writeKeyIfNotExists(key,keyLen,issuerKeyPath);
+    writeKeyIfNotExists(key, keyLen, issuerKeyPath);
 }
 
 void writeIssuerPrivKey(uint8_t *key, int keyLen) {
-    writeKeyIfNotExists(key,keyLen,issuerPrivKeyPath);
+    writeKeyIfNotExists(key, keyLen, issuerPrivKeyPath);
 }
 
 
 void writeWalletPrivKey(uint8_t *key, int keyLen) {
-    writeKeyIfNotExists(key,keyLen,walletPrivKeyPath);
+    writeKeyIfNotExists(key, keyLen, walletPrivKeyPath);
+}
+
+int verifyDAASignature(uint8_t *message, size_t len, DAA_SIGNATURE *signature) {
+
+    int res = 1;
+    DAA_CONTEXT *ctx = new_daa_context();
+    res = daa_verify_signature(ctx, message, len, signature);
+    free_daa_context(ctx);
+    return res;
 }

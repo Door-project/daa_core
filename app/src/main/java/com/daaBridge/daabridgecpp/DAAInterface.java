@@ -42,6 +42,8 @@ public class DAAInterface {
 
     public native String HandleIssuerChallenge(String issuerChallenge); // Step 4
 
+    public native int verifySignature(String jsonSignature, byte[] message);
+
     public native void EnableDAACredential(String fullcre); // Step 6
 
     public native byte[] startDAASession();

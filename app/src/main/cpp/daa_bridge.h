@@ -22,6 +22,7 @@ void onIssuerFCRE(FULL_CREDENTIAL fcre);
 
 DAA_SIGNATURE execute_daa_sign(uint8_t* msg, size_t msgLen, uint8_t* signed_nonce, size_t signed_nonce_len);
 TPM2B_PUBLIC setup();
+int verifyDAASignature(uint8_t* message, size_t len, DAA_SIGNATURE* signature);
 #endif //DAA_BRIDGE_V2_DAA_BRIDGE_H
 
 

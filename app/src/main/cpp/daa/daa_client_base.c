@@ -596,10 +596,6 @@ DAA_RC daa_verify_signature(DAA_CONTEXT *ctx, uint8_t *message, size_t len, DAA_
     if (rc != RC_OK)
         return rc;
     else if(verify_credential(ctx, &signature->rcre) == RC_OK){
-        t = clock() - t;
-        double time_taken = ((double)t)/CLOCKS_PER_SEC; // in seconds
-        printf("Time taken ( verify signature & credentials): %fms\n",time_taken*1000);
-
         return RC_OK;
     }
     return RC_UNSPECIFIED_FAILURE;

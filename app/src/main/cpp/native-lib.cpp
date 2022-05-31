@@ -186,6 +186,103 @@ Java_com_daaBridge_daabridgecpp_DAAInterface_startDAASession(JNIEnv *env, jobjec
     return jNonce;
 }
 
+
+jstring marshalDAASignature(DAA_SIGNATURE* sig,JNIEnv *env){
+    cJSON *root = NULL;
+    root = cJSON_CreateObject();
+
+
+    cJSON *signatureR = cJSON_CreateArray();
+    cJSON *signatureS = cJSON_CreateArray();
+    cJSON *V = cJSON_CreateArray();
+    cJSON *rcre = cJSON_CreateObject();
+
+    for (int i = 0; i < 32; i++) {
+        cJSON *byte = cJSON_CreateNumber(sig->signatureS[i]);
+        cJSON_AddItemToArray(signatureS, byte);
+    }
+    for (int i = 0; i < 32; i++) {
+        cJSON *byte = cJSON_CreateNumber(sig->signatureR[i]);
+        cJSON_AddItemToArray(signatureR, byte);
+    }
+    for (int i = 0; i < 32; i++) {
+        cJSON *byte = cJSON_CreateNumber(sig->V[i]);
+        cJSON_AddItemToArray(V, byte);
+    }
+
+    cJSON *p1_x = cJSON_CreateArray();
+    for (int i = 0; i < sig->rcre.points[0].coord_len; i++) {
+        cJSON *byte = cJSON_CreateNumber(sig->rcre.points[0].x_coord[i]);
+        cJSON_AddItemToArray(p1_x, byte);
+    }
+
+    cJSON *p1_y = cJSON_CreateArray();
+    for (int i = 0; i < sig->rcre.points[0].coord_len; i++) {
+        cJSON *byte = cJSON_CreateNumber(sig->rcre.points[0].y_coord[i]);
+        cJSON_AddItemToArray(p1_y, byte);
+    }
+
+    cJSON *p2_x = cJSON_CreateArray();
+    for (int i = 0; i < sig->rcre.points[1].coord_len; i++) {
+        cJSON *byte = cJSON_CreateNumber(sig->rcre.points[1].x_coord[i]);
+        cJSON_AddItemToArray(p2_x, byte);
+    }
+
+    cJSON *p2_y = cJSON_CreateArray();
+    for (int i = 0; i < sig->rcre.points[1].coord_len; i++) {
+        cJSON *byte = cJSON_CreateNumber(sig->rcre.points[1].y_coord[i]);
+        cJSON_AddItemToArray(p2_y, byte);
+    }
+
+    cJSON *p3_x = cJSON_CreateArray();
+    for (int i = 0; i < sig->rcre.points[2].coord_len; i++) {
+        cJSON *byte = cJSON_CreateNumber(sig->rcre.points[2].x_coord[i]);
+        cJSON_AddItemToArray(p3_x, byte);
+    }
+
+    cJSON *p3_y = cJSON_CreateArray();
+    for (int i = 0; i < sig->rcre.points[2].coord_len; i++) {
+        cJSON *byte = cJSON_CreateNumber(sig->rcre.points[2].y_coord[i]);
+        cJSON_AddItemToArray(p3_y, byte);
+    }
+
+    cJSON *p4_x = cJSON_CreateArray();
+    for (int i = 0; i < sig->rcre.points[3].coord_len; i++) {
+        cJSON *byte = cJSON_CreateNumber(sig->rcre.points[3].x_coord[i]);
+        cJSON_AddItemToArray(p4_x, byte);
+    }
+
+    cJSON *p4_y = cJSON_CreateArray();
+    for (int i = 0; i < sig->rcre.points[3].coord_len; i++) {
+        cJSON *byte = cJSON_CreateNumber(sig->rcre.points[3].y_coord[i]);
+        cJSON_AddItemToArray(p4_y, byte);
+    }
+
+    cJSON_AddItemToObject(root, "sigS", signatureS);
+    cJSON_AddItemToObject(root, "sigR", signatureR);
+    cJSON_AddItemToObject(root, "V", V);
+
+    cJSON_AddItemToObject(rcre, "p1_x", p1_x);
+    cJSON_AddItemToObject(rcre, "p1_y", p1_y);
+
+    cJSON_AddItemToObject(rcre, "p2_x", p2_x);
+    cJSON_AddItemToObject(rcre, "p2_y", p2_y);
+
+    cJSON_AddItemToObject(rcre, "p3_x", p3_x);
+    cJSON_AddItemToObject(rcre, "p3_y", p3_y);
+
+    cJSON_AddItemToObject(rcre, "p4_x", p4_x);
+    cJSON_AddItemToObject(rcre, "p4_y", p4_y);
+
+
+    cJSON_AddItemToObject(root, "rcre", rcre);
+
+    char *json = cJSON_PrintUnformatted(root);
+
+    return env->NewStringUTF(json);
+
+}
+
 extern "C"
 JNIEXPORT jstring JNICALL
 Java_com_daaBridge_daabridgecpp_DAAInterface_DAASign(JNIEnv *env, jobject thiz, jbyteArray data,
@@ -201,14 +298,9 @@ Java_com_daaBridge_daabridgecpp_DAAInterface_DAASign(JNIEnv *env, jobject thiz, 
 
     DAA_SIGNATURE sig = execute_daa_sign(dataBuf, dataLen, signedNonce_C, nonceLen);
 
-    return  env->NewStringUTF("hello");
-   // return env->NewStringUTF(marshalDAASignature(&sig));
-    //TODO: Return signature
+    return  marshalDAASignature(&sig,env);
 }
 
-void marshalDAASignature(DAA_SIGNATURE *ptr, unsigned char* bufferOut) {
-
-}
 
 extern "C"
 JNIEXPORT void JNICALL
@@ -790,4 +882,160 @@ Java_com_daaBridge_daabridgecpp_DAAInterface_walletDoMeASignPlz(JNIEnv *env, job
 
     return jNonce;
 
+}
+
+DAA_SIGNATURE unmarshalDAASignature(const char* signature){
+
+    DAA_SIGNATURE daaSig;
+    cJSON *root = cJSON_Parse(signature);
+    cJSON *sigS = cJSON_GetObjectItem(root, "sigS");
+    cJSON *sigR = cJSON_GetObjectItem(root, "sigR");
+    cJSON *V = cJSON_GetObjectItem(root, "V");
+    cJSON *rcre = cJSON_GetObjectItem(root, "rcre");
+    cJSON *p1x = cJSON_GetObjectItem(rcre, "p1_x");
+    cJSON *p1y = cJSON_GetObjectItem(rcre, "p1_y");
+    cJSON *p2x = cJSON_GetObjectItem(rcre, "p2_x");
+    cJSON *p2y = cJSON_GetObjectItem(rcre, "p2_y");
+    cJSON *p3x = cJSON_GetObjectItem(rcre, "p3_x");
+    cJSON *p3y = cJSON_GetObjectItem(rcre, "p3_y");
+    cJSON *p4x = cJSON_GetObjectItem(rcre, "p4_x");
+    cJSON *p4y = cJSON_GetObjectItem(rcre, "p4_y");
+
+
+
+    cJSON *iterator = NULL;
+    int i = 0;
+
+
+    cJSON_ArrayForEach(iterator, sigS) {
+        if (cJSON_IsNumber(iterator)) {
+            daaSig.signatureS[i++] = (uint8_t) iterator->valueint;
+        } else {
+            LOGD("invalid, ");
+        }
+    }
+    i = 0;
+
+    cJSON_ArrayForEach(iterator, sigR) {
+        if (cJSON_IsNumber(iterator)) {
+            daaSig.signatureR[i++] = (uint8_t) iterator->valueint;
+        } else {
+            LOGD("invalid, ");
+        }
+    }
+    i = 0;
+
+    cJSON_ArrayForEach(iterator, V) {
+        if (cJSON_IsNumber(iterator)) {
+            daaSig.V[i++] = (uint8_t) iterator->valueint;
+        } else {
+            LOGD("invalid, ");
+        }
+    }
+
+
+    i = 0;
+    cJSON_ArrayForEach(iterator, p1x) {
+        if (cJSON_IsNumber(iterator)) {
+            daaSig.rcre.points[0].x_coord[i++] = (uint8_t) iterator->valueint;
+        } else {
+            LOGD("invalid, ");
+        }
+    }
+    daaSig.rcre.points[0].coord_len = i;
+
+    iterator = NULL;
+    i = 0;
+    cJSON_ArrayForEach(iterator, p1y) {
+        if (cJSON_IsNumber(iterator)) {
+            daaSig.rcre.points[0].y_coord[i++] = (uint8_t) iterator->valueint;
+        } else {
+            LOGD("invalid, ");
+        }
+    }
+
+    iterator = NULL;
+    i = 0;
+    cJSON_ArrayForEach(iterator, p2x) {
+        if (cJSON_IsNumber(iterator)) {
+            daaSig.rcre.points[1].x_coord[i++] = (uint8_t) iterator->valueint;
+        } else {
+            LOGD("invalid, ");
+        }
+    }
+    daaSig.rcre.points[1].coord_len = i;
+
+    iterator = NULL;
+    i = 0;
+    cJSON_ArrayForEach(iterator, p2y) {
+        if (cJSON_IsNumber(iterator)) {
+            daaSig.rcre.points[1].y_coord[i++] = (uint8_t) iterator->valueint;
+        } else {
+            LOGD("invalid, ");
+        }
+    }
+
+    iterator = NULL;
+    i = 0;
+    cJSON_ArrayForEach(iterator, p3x) {
+        if (cJSON_IsNumber(iterator)) {
+            daaSig.rcre.points[2].x_coord[i++] = (uint8_t) iterator->valueint;
+        } else {
+            LOGD("invalid, ");
+        }
+    }
+    daaSig.rcre.points[2].coord_len = i;
+
+    iterator = NULL;
+    i = 0;
+    cJSON_ArrayForEach(iterator, p3y) {
+        if (cJSON_IsNumber(iterator)) {
+            daaSig.rcre.points[2].y_coord[i++] = (uint8_t) iterator->valueint;
+        } else {
+            LOGD("invalid, ");
+        }
+    }
+
+    iterator = NULL;
+    i = 0;
+    cJSON_ArrayForEach(iterator, p4x) {
+        if (cJSON_IsNumber(iterator)) {
+            daaSig.rcre.points[3].x_coord[i++] = (uint8_t) iterator->valueint;
+        } else {
+            LOGD("invalid, ");
+        }
+    }
+
+    iterator = NULL;
+    i = 0;
+    cJSON_ArrayForEach(iterator, p4y) {
+        if (cJSON_IsNumber(iterator)) {
+            daaSig.rcre.points[3].y_coord[i++] = (uint8_t) iterator->valueint;
+        } else {
+            LOGD("invalid, ");
+        }
+    }
+
+    daaSig.rcre.points[3].coord_len = i;
+    cJSON_Delete(root);
+
+    return daaSig;
+
+
+}
+
+
+extern "C"
+JNIEXPORT jint JNICALL
+Java_com_daaBridge_daabridgecpp_DAAInterface_verifySignature(JNIEnv *env, jobject thiz,
+                                                             jstring json_signature,
+                                                             jbyteArray message) {
+    const char *json = env->GetStringUTFChars(json_signature, 0);
+    int len = env->GetArrayLength(message);
+    uint8_t *buf = new unsigned char[len];
+    env->GetByteArrayRegion(message, 0, len, reinterpret_cast<jbyte *>(buf));
+
+    DAA_SIGNATURE sig = unmarshalDAASignature(json);
+    if(verifyDAASignature(buf,len,&sig) == RC_OK) return 1;
+    return 0;
 }

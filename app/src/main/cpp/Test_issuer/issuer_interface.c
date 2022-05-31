@@ -464,6 +464,9 @@ char *send_challenge_response(const char *json) {
     CHALLENGE_RESPONSE challengeResponse = parseChallengeResponse(json);
     DAA_CONTEXT *ctx = new_daa_context();
 
+    LOGD("ChallengeResponse signature:");
+
+
 
     FULL_CREDENTIAL fcre = daa_on_host_response(ctx, challengeResponse.credneitalKey,
                                                 &challengeResponse.sig, 1);
